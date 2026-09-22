@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import re
 
 # 1. URL du site cible
-url = "https://gamewave.fr"
+url = "https://gamewave.fr/coin-master/coin-master-tours-spins-et-pieces-gratuits/"
 
 # Création d'un scraper imitant un navigateur Chrome sur Windows
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
