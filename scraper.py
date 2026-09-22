@@ -34,7 +34,7 @@ if status_code == 200:
         href = link["href"]
         
         # Cibler uniquement les liens officiels de récompense Coin Master
-        if "://coinmaster.com" in href:
+        if "coinmaster.com" in href:
             # Récupérer le bloc de texte entourant le lien pour le contexte
             parent_text = link.find_parent().get_text(separator=" ").strip() if link.find_parent() else ""
             if len(parent_text) < 15 and link.find_parent().find_parent():
