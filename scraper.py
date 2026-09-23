@@ -89,7 +89,7 @@ if status_code == 200:
                     "heure": heure_actuelle_str,
                     "recompense": type_recompense, 
                     "lienurl": href,
-                    "badge": "new"  # Texte "new" pour l'affichage sur votre site
+                    "badge": "NEW"  # Texte "new" pour l'affichage sur votre site
                 })
 
     # 3. Écriture du fichier JSON mis à jour
