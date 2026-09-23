@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 
-# NOUVELLE CONFIGURATION : Agrégateur stable souvent mis à jour
+# CONFIGURATION CIBLE
 TARGET_URL = "https://hityah.com" 
 JSON_FILE = "scrapcoinmaster.json"
 
@@ -14,6 +14,9 @@ def load_existing_links():
         try:
             with open(JSON_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+                # Si le fichier contient notre lien de test, on l'efface pour laisser place aux vrais liens
+                if isinstance(data, list) and len(data) == 1 and "test" in data[0].get("lienurl", ""):
+                    return []
                 return data if isinstance(data, list) else []
         except json.JSONDecodeError:
             return []
@@ -34,33 +37,35 @@ def scrape_coin_master_links():
     print(f"Connexion à : {TARGET_URL}")
     
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     }
     
     try:
         response = requests.get(TARGET_URL, headers=headers, timeout=15)
         response.raise_for_status()
     except requests.RequestException as e:
-        raise RuntimeError(f"Le site bloque la connexion : {e}")
+        print(f"Erreur de connexion : {e}")
+        return
 
     soup = BeautifulSoup(response.text, 'html.parser')
     existing_data = load_existing_links()
     existing_urls = {item['lienurl'] for item in existing_data if 'lienurl' in item}
     
     new_links_count = 0
-    anchors = soup.find_all('a', href=True)
-    
-    print(f"Analyse de {len(anchors)} liens trouvés sur la page...")
 
-    for anchor in anchors:
+    # Analyse de tous les liens de la page
+    for anchor in soup.find_all('a', href=True):
         url = anchor['href'].strip()
         
-        # Filtre large pour attraper les redirections Coin Master courantes
-        if any(pattern in url for pattern in ["vikalp.imobi", "CoinMaster.rewards", "static.moonactive.net", "coin-master.co"]):
+        # Filtre étendu pour intercepter absolument toutes les formes de liens de récompenses
+        if any(p in url.lower() for p in ["vikalp.imobi", "coinmaster.rewards", "moonactive", "coin-master.co", "static.moonactive"]):
             if url not in existing_urls:
                 reward_label = clean_reward_text(anchor.get_text())
                 
+                # Si le texte du lien est vide ou trop générique (ex: "Collect"), on cherche le texte autour
+                if len(reward_label) < 3 and anchor.parent:
+                    reward_label = clean_reward_text(anchor.parent.get_text())
+
                 link_entry = {
                     "reward": reward_label,
                     "lienurl": url,
@@ -71,23 +76,23 @@ def scrape_coin_master_links():
                 existing_data.insert(0, link_entry)
                 existing_urls.add(url)
                 new_links_count += 1
-                print(f"Ajout : {reward_label} -> {url}")
+                print(f"Nouveau lien trouvé : {reward_label} -> {url}")
 
     if new_links_count > 0:
         save_links(existing_data[:100])
     else:
-        # SI LE FICHIER ÉTAIT VIDE, ON FORCE AU MOINS UNE ENTRÉE DE TEST POUR VALIDER LE FONCTIONNEMENT DE GIT
+        # Si aucun lien n'est trouvé et que la liste est vide, on garde une trace d'activité
         if len(existing_data) == 0:
-            print("Aucun lien compatible trouvé, génération d'une entrée de test de sécurité.")
-            test_entry = {
-                "reward": "Lancement initial réussi - En attente de nouveaux bonus",
+            print("Aucun lien détecté sur cette structure. En attente de la prochaine mise à jour du site.")
+            backup_entry = {
+                "reward": "En attente de nouveaux liens",
                 "lienurl": "https://moonactive.net",
                 "date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 "timestamp": int(datetime.utcnow().timestamp())
             }
-            save_links([test_entry])
+            save_links([backup_entry])
         else:
-            print("Pas de nouveau lien détecté.")
+            print("Pas de nouveau lien détecté lors de ce passage.")
 
 if __name__ == "__main__":
     scrape_coin_master_links()
