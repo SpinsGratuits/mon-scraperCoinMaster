@@ -1,37 +1,46 @@
-name: Script de Scraping Périodique
+name: Coin Master Link Scraper
 
 on:
   schedule:
-    # Exécution à 08:00 et 20:00 (Heure française)
-    - cron: '15 3,4,6,7,8,14,18,21 * * *'
-  workflow_dispatch:
+    # S'exécute automatiquement toutes les heures (à la minute 0)
+    - cron: '3 * * * *'
+  workflow_dispatch: # Permet de lancer le scraper manuellement depuis GitHub
 
 jobs:
-  scrape:
+  build-and-scrape:
     runs-on: ubuntu-latest
 
+    permissions:
+      # Autorise le robot à enregistrer et pousser le fichier JSON sur votre dépôt
+      contents: write
+
     steps:
-    - name: Checkout du code
+    # 1. Récupère le code du dépôt GitHub
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Configurer Python
+    # 2. Installe Python sur la machine virtuelle
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    # MODIFICATION ICI : On installe cloudscraper en plus des autres
-    - name: Installer les librairies
+    # 3. Installe les dépendances nécessaires au scraper
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install beautifulsoup4 cloudscraper
+        pip install requests beautifulsoup4
 
-    - name: Lancer le scraper
+    # 4. Exécute le script Python
+    - name: Run Scraper
       run: python scraper.py
 
-    - name: Sauvegarder les modifications dans le dépôt
+    # 5. Enregistre les modifications de scrapcoinmaster.json et les pousse sur GitHub
+    - name: Commit and Push changes
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@://github.com"
         git add scrapcoinmaster.json
-        git commit -m "Mise à jour automatique des données : $(date +'%Y-%m-%d')" || exit 0
+        # Le "|| exit 0" évite que le workflow plante s'il n'y a aucun nouveau lien à enregistrer
+        git commit -m "Mise à jour automatique des liens Coin Master" || exit 0
         git push
