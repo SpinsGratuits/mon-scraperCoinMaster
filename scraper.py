@@ -1,97 +1,90 @@
+import os
 import json
-from datetime import datetime, date
-import cloudscraper
-from bs4 import BeautifulSoup
 import re
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
 
-# 1. URL du site cible
-url = "https://gamewave.fr/coin-master/coin-master-tours-spins-et-pieces-gratuits/"
+# CONFIGURATION
+TARGET_URL = "https://coinmasterfreespins.net" 
+JSON_FILE = "scrapcoinmaster.json"  # Modifié selon votre demande
 
-# Création d'un scraper imitant un navigateur Chrome sur Windows
-scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+def load_existing_links():
+    """Charge les liens déjà enregistrés pour éviter les doublons."""
+    if os.path.exists(JSON_FILE):
+        try:
+            with open(JSON_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print("Fichier JSON corrompu, réinitialisation.")
+            return []
+    return []
 
-try:
-    response = scraper.get(url)
-    status_code = response.status_code
-    html_text = response.text
-except Exception as e:
-    status_code = 500
-    html_text = ""
-    print(f"Erreur lors du contournement du blocage : {e}")
+def save_links(links_list):
+    """Sauvegarde la liste mise à jour dans le fichier JSON avec un formatage propre."""
+    with open(JSON_FILE, 'w', encoding='utf-8') as f:
+        json.dump(links_list, f, ensure_ascii=False, indent=4)
+    print(f"Base de données JSON mise à jour avec succès ({len(links_list)} liens au total).")
 
-if status_code == 200:
-    soup = BeautifulSoup(html_text, "html.parser")
-    date_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    date_du_jour = date.today().strftime("%d/%m/%Y")
+def clean_reward_text(text):
+    """Nettoie le texte entourant le lien pour deviner la récompense (ex: '25 Spins')."""
+    text = text.strip()
+    if not text:
+        return "Récompense Coin Master"
+    return re.sub(r'\s+', ' ', text)[:100]
+
+def scrape_coin_master_links():
+    print(f"Démarrage du scraping sur : {TARGET_URL}")
     
-    # Liste qui contiendra nos objets JSON
-    json_data = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
     
-    # 2. Scanner TOUS les liens hypertextes de la page
-    all_links = soup.find_all("a", href=True)
+    try:
+        response = requests.get(TARGET_URL, headers=headers, timeout=15)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Erreur lors de la récupération de la page : {e}")
+        return
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    existing_data = load_existing_links()
     
-    for link in all_links:
-        href = link["href"]
+    # Extraction des URLs existants depuis la clé 'lienurl'
+    existing_urls = {item['lienurl'] for item in existing_data if 'lienurl' in item}
+    
+    new_links_count = 0
+
+    # Recherche de toutes les balises de liens (<a>)
+    for anchor in soup.find_all('a', href=True):
+        url = anchor['href'].strip()
         
-        # Cibler uniquement les liens officiels de récompense Coin Master
-        if "coinmaster.com" in href:
-            # Récupérer le bloc de texte entourant le lien pour le contexte
-            parent_text = link.find_parent().get_text(separator=" ").strip() if link.find_parent() else ""
-            if len(parent_text) < 15 and link.find_parent().find_parent():
-                parent_text = link.find_parent().find_parent().get_text(separator=" ").strip()
+        # FILTRAGE : Recherche des patterns d'URL officiels de récompense Coin Master
+        if "vikalp.imobi" in url or "CoinMaster.rewards" in url or "static.moonactive.net" in url:
             
-            clean_text = " ".join(parent_text.split())
-            
-            # --- EXTRACTION DE LA DATE ---
-            date_match = re.search(r'\d{2}/\d{2}/\d{4}', clean_text)
-            if date_match:
-                date_evenement = date_match.group(0)
-            else:
-                date_courte_match = re.search(r'\b\d{2}/\d{2}\b', clean_text)
-                date_evenement = f"{date_courte_match.group(0)}/{date.today().year}" if date_courte_match else date_du_jour
-            
-            # --- EXTRACTION DE L'HEURE ---
-            # Cherche des formats comme "14:35", "08h15", "9h00"
-            heure_match = re.search(r'\b\d{1,2}[h:]\d{2}\b', clean_text, re.IGNORECASE)
-            if heure_match:
-                # Normalisation du format pour toujours avoir HH:MM (ex: 9h15 devient 09:15)
-                heure_brute = heure_match.group(0).lower().replace('h', ':')
-                if len(heure_brute.split(':')[0]) == 1:
-                    heure_brute = "0" + heure_brute
-                heure_evenement = heure_brute
-            else:
-                heure_evenement = "00:00"  # Valeur par défaut si non spécifiée
-            
-            # --- EXTRACTION DE LA RÉCOMPENSE ---
-            recompense_match = re.search(r'\d+[\s\w]*(?:tours|spins|pieces|coins|tours\s*&\s*pièces)', clean_text, re.IGNORECASE)
-            type_recompense = recompense_match.group(0).strip() if recompense_match else "Tours / Pièces"
-            type_recompense = re.sub(r'^(?:Cliquez ici pour recevoir|Récupérer)\s*', '', type_recompense, flags=re.IGNORECASE)
-            
-            # Éviter les doublons de liens
-            if not any(item["lienurl"] == href for item in json_data):
-                json_data.append({
-                    "date_scraping": date_now, 
-                    "date": date_evenement, 
-                    "heure": heure_evenement,
-                    "recompense": type_recompense, 
-                    "lienurl": href
-                })
+            # Évite d'ajouter le lien s'il est déjà présent dans notre JSON
+            if url not in existing_urls:
+                reward_label = clean_reward_text(anchor.get_text())
+                
+                # Structure de l'objet JSON
+                link_entry = {
+                    "reward": reward_label,
+                    "lienurl": url,
+                    "date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                    "timestamp": int(datetime.utcnow().timestamp())
+                }
+                
+                # Ajouter au début de la liste
+                existing_data.insert(0, link_entry)
+                existing_urls.add(url)
+                new_links_count += 1
+                print(f"Nouveau lien trouvé : {reward_label} -> {url}")
 
-    # 3. Écriture du fichier JSON
-    filename = "scrapcoinmaster.json"
-    
-    if not json_data:
-        json_data.append({
-            "date_scraping": date_now,
-            "statut": "VIDE",
-            "message": "Aucun lien trouvé sur la page. Vérifiez manuellement le site."
-        })
-        print("Aucun lien extrait.")
+    if new_links_count > 0:
+        print(f"{new_links_count} nouveaux liens ajoutés.")
+        save_links(existing_data[:100])
     else:
-        print(f"Succès total ! {len(json_data)} liens trouvés et sauvegardés.")
+        print("Aucun nouveau lien détecté lors de ce passage.")
 
-    with open(filename, mode="w", encoding="utf-8") as json_file:
-        json.dump(json_data, json_file, indent=4, ensure_ascii=False)
-            
-else:
-    print(f"Erreur d'accès réseau (Code {status_code}). Le site bloque toujours.")
+if __name__ == "__main__":
+    scrape_coin_master_links()
