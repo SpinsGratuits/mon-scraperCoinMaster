@@ -7,14 +7,15 @@ from datetime import datetime
 
 # CONFIGURATION
 TARGET_URL = "https://coinmasterfreespins.net" 
-JSON_FILE = "scrapcoinmaster.json"  # Modifié selon votre demande
+JSON_FILE = "scrapcoinmaster.json"
 
 def load_existing_links():
     """Charge les liens déjà enregistrés pour éviter les doublons."""
     if os.path.exists(JSON_FILE):
         try:
             with open(JSON_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                return data if isinstance(data, list) else []
         except json.JSONDecodeError:
             print("Fichier JSON corrompu, réinitialisation.")
             return []
@@ -50,7 +51,8 @@ def scrape_coin_master_links():
     soup = BeautifulSoup(response.text, 'html.parser')
     existing_data = load_existing_links()
     
-    # Extraction des URLs existants depuis la clé 'lienurl'
+    # Si le fichier est vide, on désactive temporairement le blocage pour tout aspirer la première fois
+    is_first_run = len(existing_data) == 0
     existing_urls = {item['lienurl'] for item in existing_data if 'lienurl' in item}
     
     new_links_count = 0
@@ -62,11 +64,10 @@ def scrape_coin_master_links():
         # FILTRAGE : Recherche des patterns d'URL officiels de récompense Coin Master
         if "vikalp.imobi" in url or "CoinMaster.rewards" in url or "static.moonactive.net" in url:
             
-            # Évite d'ajouter le lien s'il est déjà présent dans notre JSON
-            if url not in existing_urls:
+            # Si c'est le premier lancement OU si le lien n'existe pas encore
+            if is_first_run or (url not in existing_urls):
                 reward_label = clean_reward_text(anchor.get_text())
                 
-                # Structure de l'objet JSON
                 link_entry = {
                     "reward": reward_label,
                     "lienurl": url,
@@ -74,17 +75,17 @@ def scrape_coin_master_links():
                     "timestamp": int(datetime.utcnow().timestamp())
                 }
                 
-                # Ajouter au début de la liste
-                existing_data.insert(0, link_entry)
+                existing_data.append(link_entry)
                 existing_urls.add(url)
                 new_links_count += 1
-                print(f"Nouveau lien trouvé : {reward_label} -> {url}")
+                print(f"Lien détecté : {reward_label} -> {url}")
 
     if new_links_count > 0:
-        print(f"{new_links_count} nouveaux liens ajoutés.")
-        save_links(existing_data[:100])
+        print(f"{new_links_count} liens enregistrés.")
+        # Garde les 100 derniers liens max
+        save_links(existing_data[-100:])
     else:
-        print("Aucun nouveau lien détecté lors de ce passage.")
+        print("Aucun lien détecté lors de ce passage.")
 
 if __name__ == "__main__":
     scrape_coin_master_links()
