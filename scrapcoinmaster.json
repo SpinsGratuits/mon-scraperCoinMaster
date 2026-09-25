@@ -1,11 +1,19 @@
 [
     {
+        "date_scraping": "25/09/2026 à 05:05",
+        "date": "25/09/2026",
+        "heure": "05:05",
+        "recompense": "35 50 tours",
+        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_CHATBQBhPiM_20260925",
+        "badge": "NEW"
+    },
+    {
         "date_scraping": "25/09/2026 à 04:06",
         "date": "25/09/2026",
         "heure": "04:06",
         "recompense": "35 50 tours",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_FCBLvdSYn_20260924",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "24/09/2026 à 07:07",
@@ -21,7 +29,7 @@
         "heure": "04:06",
         "recompense": "35 50 tours",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_INSqKVohE_20260924",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "25/09/2026 à 04:06",
@@ -29,7 +37,7 @@
         "heure": "04:06",
         "recompense": "35 50 tours",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_TRGpJmVKE_20260924",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "25/09/2026 à 04:06",
@@ -37,7 +45,7 @@
         "heure": "04:06",
         "recompense": "35 50 tours",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_WATSYAtxWg_20260924",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "25/09/2026 à 04:06",
@@ -45,7 +53,7 @@
         "heure": "04:06",
         "recompense": "35 50 tours",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_CHATByxfcUm_20260924",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "24/09/2026 à 04:06",
