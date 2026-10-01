@@ -6,7 +6,7 @@
         "heure": "20:06",
         "recompense": "Spins et Coins",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_RICHYOLmgS_20260913",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "30/09/2026 @ 16:08",
@@ -240,51 +240,6 @@
         "heure": "07:51",
         "recompense": "Spins et Coins",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_HELPExUyFt_20260926",
-        "badge": ""
-    },
-    {
-        "date_scraping": "30/09/2026 @ 07:51",
-        "date_scraping1": "25/09/2026 @ 07:51",
-        "date": "25/09/2026",
-        "heure": "07:51",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_EMAILhfALoF_20260924",
-        "badge": ""
-    },
-    {
-        "date_scraping": "30/09/2026 @ 07:51",
-        "date_scraping1": "25/09/2026 @ 07:51",
-        "date": "25/09/2026",
-        "heure": "07:51",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_TWIJGCdQW_20260925",
-        "badge": ""
-    },
-    {
-        "date_scraping": "30/09/2026 @ 07:51",
-        "date_scraping1": "25/09/2026 @ 07:51",
-        "date": "25/09/2026",
-        "heure": "07:51",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_FSTmoHbyl_20260925",
-        "badge": ""
-    },
-    {
-        "date_scraping": "30/09/2026 @ 07:51",
-        "date_scraping1": "25/09/2026 @ 07:51",
-        "date": "25/09/2026",
-        "heure": "07:51",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_CHATBQBhPiM_20260925",
-        "badge": ""
-    },
-    {
-        "date_scraping": "30/09/2026 @ 07:51",
-        "date_scraping1": "25/09/2026 @ 07:51",
-        "date": "25/09/2026",
-        "heure": "07:51",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_HELPDfaILM_20260925",
         "badge": ""
     }
 ]
