@@ -6,18 +6,21 @@ import cloudscraper
 from bs4 import BeautifulSoup
 
 # --- 1. CONFIGURATION ---
-# URL configurée spécifiquement pour la page Coin Master de Mosttechs
 url = "https://mosttechs.com/coin-master-60-free-spin/"
-filename = "scrapcoinmaster.json"  # Nom du fichier adapté pour différencier de Piggy Go
+filename = "scrapcoinmaster.json"
 
-# Dictionnaire de traduction des mois pour la conversion en vraies dates Python
 mois_en_to_num = {
     "january": "01", "januray": "01", "february": "02", "february ": "02", "march": "03", 
     "april": "04", "may": "05", "june": "06", "july": "07", "august": "08", 
     "september": "09", "october": "10", "november": "11", "december": "12"
 }
 
-# --- 2. CHARGEMENT DE L'HISTORIQUE ---
+now = datetime.now()
+date_now_str = now.strftime("%d/%m/%Y @ %H:%M")
+heure_actuelle_str = now.strftime("%H:%M")
+limite_conservation = now - timedelta(days=6)
+
+# --- 2. CHARGEMENT & NETTOYAGE DE L'HISTORIQUE ---
 anciens_liens = {}
 if os.path.exists(filename):
     try:
@@ -26,7 +29,12 @@ if os.path.exists(filename):
             if isinstance(data_chargee, list):
                 for item in data_chargee:
                     if "lienurl" in item:
-                        anciens_liens[item["lienurl"]] = item
+                        try:
+                            date_objet = datetime.strptime(item.get("date", ""), "%d/%m/%Y")
+                            if date_objet >= limite_conservation:
+                                anciens_liens[item["lienurl"]] = item
+                        except:
+                            anciens_liens[item["lienurl"]] = item
     except Exception as e:
         print(f"[Attention] Impossible de lire l'historique JSON : {e}")
 
@@ -44,28 +52,19 @@ except Exception as e:
 
 if status_code == 200:
     soup = BeautifulSoup(html_text, "html.parser")
-    
-    now = datetime.now()
-    date_now_str = now.strftime("%d/%m/%Y @ %H:%M")
-    heure_actuelle_str = now.strftime("%H:%M")
-    
-    # Seuil limite : suppression du fichier de ce qui est vieux de plus de 6 jours
-    limite_conservation = now - timedelta(days=6)
-    
     json_data = []
+    liens_visites_session = set()
     
-    # Isolement du contenu principal pour ignorer les menus et barres latérales
     entry_content = soup.find(class_="entry-content")
     if not entry_content:
         entry_content = soup
         
-    # 3. PARCOURS CHRONOLOGIQUE DES BLOCS DE TEXTE
-    current_date_str = now.strftime("%d/%m/%Y")  # Valeur par défaut
+    # --- 3. PARCOURS CHRONOLOGIQUE DES BLOCS DE TEXTE ---
+    current_date_str = now.strftime("%d/%m/%Y")
     
     for element in entry_content.find_all(["p", "ul", "ol", "strong"]):
         text = element.get_text().strip().lower()
         
-        # Détection d'une ligne de date (Ex: "26 september 2026")
         match_date = re.search(r'(\d{1,2})\s+([a-z]+)\s+(\d{4})', text)
         if match_date:
             jour = match_date.group(1).zfill(2)
@@ -74,52 +73,58 @@ if status_code == 200:
             
             num_mois = mois_en_to_num.get(nom_mois, "01")
             current_date_str = f"{jour}/{num_mois}/{annee}"
-            continue  # Date enregistrée, on passe à la recherche des liens sous celle-ci
+            continue  
             
-        # Extraction des liens hypertextes présents dans le bloc courant
         links = element.find_all("a", href=True)
         for link in links:
             href = link["href"].strip()
             
-            # Filtres sanitaires (Exclusion des partages sociaux et liens internes Telegram)
             if href.startswith("/") or "t.me" in href.lower() or "telegram.me" in href.lower():
                 continue
             if any(p in href.lower() for p in ["twitter.com", "facebook.com", "whatsapp", "pinterest", "reddit.com"]):
                 continue
                 
-            # Validation des mots-clés typiques des domaines de récompense Coin Master
-            # (Coin Master utilise principalement des liens vers son domaine officiel ou raccourcis spécifiques)
             keywords = ["coinmaster", "static-mat", "t.co", "bit.ly"]
             if any(key in href.lower() for key in keywords):
                 
-                # Vérification de la limite de conservation des 6 jours
                 try:
                     date_objet = datetime.strptime(current_date_str, "%d/%m/%Y")
                     if date_objet < limite_conservation:
-                        continue  # Lien expiré par rapport au calendrier, ignoré
+                        continue
                 except:
                     pass
                 
-                # Éviter les doublons lors de la session de crawl courante
-                if any(item["lienurl"] == href for item in json_data):
+                if href in liens_visites_session:
                     continue
+                liens_visites_session.add(href)
                 
                 type_recompense = "Spins et Coins"
                 
-                # --- STRATÉGIE DE RECONSTITUTION ET CONSERVATION STRICTE ---
+                # =====================================================================
+                # MODIFICATION ICI : GESTION DU BADGE NEW PENDANT 6 HEURES
+                # =====================================================================
                 if href in anciens_liens:
-                    # ANCIEN LIEN : On conserve STRICTEMENT l'historique initial sans modifier date_scraping1
+                    date_premier_scraping_str = anciens_liens[href].get("date_scraping", date_now_str)
+                    badge_actuel = ""
+                    
+                    try:
+                        date_premier_scraping = datetime.strptime(date_premier_scraping_str, "%d/%m/%Y @ %H:%M")
+                        # Si le lien a moins de 6 heures, on garde le badge "NEW"
+                        if now - date_premier_scraping < timedelta(hours=6):
+                            badge_actuel = "NEW"
+                    except:
+                        badge_actuel = anciens_liens[href].get("badge", "")
+
                     json_data.append({
-                        "date_scraping": anciens_liens[href].get("date_scraping", date_now_str), 
+                        "date_scraping": date_premier_scraping_str, 
                         "date_scraping1": anciens_liens[href].get("date_scraping1", f"{current_date_str} @ {heure_actuelle_str}"),
                         "date": current_date_str,  
                         "heure": anciens_liens[href].get("heure", "00:00"),
                         "recompense": anciens_liens[href].get("recompense", type_recompense), 
                         "lienurl": href,
-                        "badge": "" 
+                        "badge": badge_actuel
                     })
                 else:
-                    # NOUVEAU LIEN : On crée date_scraping1 avec la date du site et l'heure actuelle du robot
                     date_scraping1_combinee = f"{current_date_str} @ {heure_actuelle_str}"
                     json_data.append({
                         "date_scraping": date_now_str, 
@@ -130,27 +135,25 @@ if status_code == 200:
                         "lienurl": href,
                         "badge": "NEW" 
                     })
+                # =====================================================================
 
-    # Si le site distant échoue à renvoyer des données, sauvegarde de l'historique sain nettoyé
     if not json_data and anciens_liens:
         json_data = list(anciens_liens.values())
 
-    # --- 4. TRI CHRONOLOGIQUE PAR DATE DE PARUTION DU SITE (Le plus récent en haut) ---
+    # --- 4. TRI CHRONOLOGIQUE ---
     def extraire_cle_parution(item):
         try:
-            date_part = datetime.strptime(item.get("date", ""), "%d/%m/%Y")
-            return date_part.timestamp()
+            return datetime.strptime(item.get("date", ""), "%d/%m/%Y").timestamp()
         except:
             return 0
 
-    # Classement décroissant pour placer les liens de parution du jour tout en haut de la liste
     json_data.sort(key=extraire_cle_parution, reverse=True)
 
-    # --- 5. ENREGISTREMENT DU FICHIER JSON ---
+    # --- 5. ENREGISTREMENT ---
     with open(filename, mode="w", encoding="utf-8") as json_file:
         json.dump(json_data, json_file, indent=4, ensure_ascii=False)
         
-    print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens classés chronologiquement). Anciennes valeurs préservées.")
+    print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
             
 else:
     print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
