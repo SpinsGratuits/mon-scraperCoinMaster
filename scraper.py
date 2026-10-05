@@ -4,6 +4,8 @@ import re
 from datetime import datetime, timedelta
 import cloudscraper
 from bs4 import BeautifulSoup
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # --- 1. CONFIGURATION ---
 url = "https://mosttechs.com/coin-master-60-free-spin/"
@@ -19,6 +21,16 @@ now = datetime.now()
 date_now_str = now.strftime("%d/%m/%Y @ %H:%M")
 heure_actuelle_str = now.strftime("%H:%M")
 limite_conservation = now - timedelta(days=6)
+
+# --- 1B. INITIALISATION FIREBASE ---
+firebase_key_raw = os.environ.get('FIREBASE_KEY')
+if not firebase_key_raw:
+    raise ValueError("Le secret FIREBASE_KEY est introuvable dans l'environnement.")
+
+cred_json = json.loads(firebase_key_raw)
+cred = credentials.Certificate(cred_json)
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 # --- 2. CHARGEMENT & NETTOYAGE DE L'HISTORIQUE ---
 anciens_liens = {}
@@ -149,11 +161,23 @@ if status_code == 200:
 
     json_data.sort(key=extraire_cle_parution, reverse=True)
 
-    # --- 5. ENREGISTREMENT ---
+    # --- 5. ENREGISTREMENT LOCAL ---
     with open(filename, mode="w", encoding="utf-8") as json_file:
         json.dump(json_data, json_file, indent=4, ensure_ascii=False)
         
     print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
+
+    # --- 6. EXPORTATION VERS FIREBASE FIRESTORE ---
+    try:
+        # Utilisation d'un document fixe "current_links" dans la collection "coin_master" 
+        # pour stocker la liste complète, ce qui est parfait pour l'affichage FlutterFlow.
+        db.collection("coin_master").document("current_links").set({
+            "links": json_data,
+            "updated_at": firestore.SERVER_TIMESTAMP
+        })
+        print("[Firebase] Données synchronisées avec succès sur Firestore.")
+    except Exception as e:
+        print(f"[Firebase] [Erreur] Synchronisation impossible : {e}")
             
 else:
     print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
