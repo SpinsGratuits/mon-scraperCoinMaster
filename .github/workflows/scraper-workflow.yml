@@ -26,6 +26,8 @@ jobs:
         pip install beautifulsoup4 cloudscraper
 
     - name: Lancer le scraper
+      env:
+        FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
       run: python scraper.py
 
     - name: Sauvegarder les modifications dans le dépôt
