@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import cloudscraper
 from bs4 import BeautifulSoup
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, messaging  # <-- AJOUT DE MESSAGING ICI
 
 # --- 1. CONFIGURATION ---
 url = "https://mosttechs.com/coin-master-60-free-spin/"
@@ -66,6 +66,7 @@ if status_code == 200:
     soup = BeautifulSoup(html_text, "html.parser")
     json_data = []
     liens_visites_session = set()
+    nouveaux_liens_detectes = 0  # <-- COMPTEUR POUR DECLENCHER LA NOTIFICATION
     
     entry_content = soup.find(class_="entry-content")
     if not entry_content:
@@ -137,6 +138,7 @@ if status_code == 200:
                         "badge": badge_actuel
                     })
                 else:
+                    nouveaux_liens_detectes += 1  # <-- ON A TROUVÉ UN NOUVEAU LIEN !
                     date_scraping1_combinee = f"{current_date_str} @ {heure_actuelle_str}"
                     json_data.append({
                         "date_scraping": date_now_str, 
@@ -169,8 +171,6 @@ if status_code == 200:
 
     # --- 6. EXPORTATION VERS FIREBASE FIRESTORE ---
     try:
-        # Utilisation d'un document fixe "current_links" dans la collection "coin_master" 
-        # pour stocker la liste complète, ce qui est parfait pour l'affichage FlutterFlow.
         db.collection("coin_master").document("current_links").set({
             "links": json_data,
             "updated_at": firestore.SERVER_TIMESTAMP
@@ -178,6 +178,33 @@ if status_code == 200:
         print("[Firebase] Données synchronisées avec succès sur Firestore.")
     except Exception as e:
         print(f"[Firebase] [Erreur] Synchronisation impossible : {e}")
+
+    # --- 7. ENVOI DE LA NOTIFICATION PUSH SI NOUVEAU LIEN DISPONIBLE ---
+    if nouveaux_liens_detectes > 0:
+        try:
+            # Construction du message pour l'application FlutterFlow
+            message_push = messaging.Message(
+                notification=messaging.Notification(
+                    title="Coin M. Nouveaux Spins ! 🎁",
+                    body=f"De nouveaux liens viennent d'être ajoutés. Profitez de vos tours gratuits !"
+                ),
+                android=messaging.AndroidConfig(
+                    priority='high',  # Force l'affichage sur écran en veille
+                    notification=messaging.AndroidNotification(
+                        sound='default',
+                        click_action='FLUTTER_NOTIFICATION_CLICK'  # Ouvre l'app au clic
+                    ),
+                ),
+                topic='alertes_github'  # Doit correspondre au nom défini dans la Custom Action FlutterFlow
+            )
+            
+            # Envoi au topic
+            response = messaging.send(message_push)
+            print(f"[Push FCM] Notification envoyée avec succès ({nouveaux_liens_detectes} nouveau(x) lien(s)). ID: {response}")
+        except Exception as e:
+            print(f"[Push FCM] [Erreur] Échec de l'envoi de la notification : {e}")
+    else:
+        print("[Push FCM] Aucun nouveau lien détecté. Pas de notification envoyée.")
             
 else:
     print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
