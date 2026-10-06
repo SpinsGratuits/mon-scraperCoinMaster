@@ -36,6 +36,7 @@ firebase_key_raw = os.environ.get('FIREBASE_KEY')
 if not firebase_key_raw:
     raise ValueError("Le secret FIREBASE_KEY est introuvable dans l'environnement.")
 
+# Vérification pour éviter les conflits d'initialisation en multi-script
 if not firebase_admin._apps:
     cred_json = json.loads(firebase_key_raw)
     cred = credentials.Certificate(cred_json)
@@ -61,6 +62,7 @@ if os.path.exists(filename):
     except Exception as e:
         print(f"[Attention] Impossible de lire l'historique JSON : {e}")
 
+# Client anti-bot pour contourner Cloudflare de Mosttechs
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
 
 try:
@@ -76,12 +78,13 @@ if status_code == 200:
     soup = BeautifulSoup(html_text, "html.parser")
     json_data = []
     liens_visites_session = set() 
-    nouveaux_liens_detectes = 0  
+    nouveaux_liens_detectes = 0  # Compteur dédié au déclenchement des pushs
     
     entry_content = soup.find(class_="entry-content")
     if not entry_content:
         entry_content = soup
         
+    # --- 3. PARCOURS DE LA STRUCTURE TEXTUELLE ---
     current_date_str = now.strftime("%d/%m/%Y")  
     
     for element in entry_content.find_all(["p", "ul", "ol", "strong"]):
@@ -106,7 +109,7 @@ if status_code == 200:
             if any(p in href.lower() for p in ["twitter.com", "facebook.com", "whatsapp", "pinterest", "reddit.com"]):
                 continue
                 
-            keywords = ["coinmaster", "moonactive", "t.co", "bit.ly"]
+            keywords = ["dicedreams", "superplay", "t.co", "bit.ly"]
             if any(key in href.lower() for key in keywords):
                 
                 try:
@@ -120,8 +123,9 @@ if status_code == 200:
                     continue
                 liens_visites_session.add(href)
                 
-                type_recompense = "Spins gratuits"
+                type_recompense = "Rolls gratuits"
                 
+                # --- STRATÉGIE CONSERVATION DU BADGE NEW (6 HEURES) ---
                 if href in anciens_liens:
                     date_premier_scraping_str = anciens_liens[href].get("date_scraping", date_now_str)
                     badge_actuel = ""
@@ -143,6 +147,7 @@ if status_code == 200:
                         "badge": badge_actuel
                     })
                 else:
+                    # Nouveau lien trouvé
                     nouveaux_liens_detectes += 1
                     date_scraping1_combinee = f"{current_date_str} @ {heure_actuelle_str}"
                     json_data.append({
@@ -158,6 +163,7 @@ if status_code == 200:
     if not json_data and anciens_liens:
         json_data = list(anciens_liens.values())
 
+    # --- 4. TRI CHRONOLOGIQUE ---
     def extraire_cle_parution(item):
         try:
             return datetime.strptime(item.get("date", ""), "%d/%m/%Y").timestamp()
@@ -166,39 +172,40 @@ if status_code == 200:
 
     json_data.sort(key=extraire_cle_parution, reverse=True)
 
+    # --- 5. ENREGISTREMENT LOCAL ---
     with open(filename, mode="w", encoding="utf-8") as json_file:
         json.dump(json_data, json_file, indent=4, ensure_ascii=False)
         
-    print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
+    print(f"[Terminé] Fichier Dice Dreams {filename} mis à jour ({len(json_data)} liens valides).")
 
-    # --- 7. EXPORTATION NOTIFICATION & ENVOI PUSH DIRECT ---
+    # --- 6. EXPORTATION ET ENVOI DIRECT DU PUSH ---
     if nouveaux_liens_detectes > 0:
         try:
-            from firebase_admin import messaging
+            from firebase_admin import messaging  # Import indispensable pour l'antenne radio
             
-            # Écriture de l'historique dans la collection globale
+            # 1. Écriture optionnelle d'historique dans Firestore
             db.collection("notifications").add({
                 "title": "🐷 Coin Reward ! 🎁",
                 "body": "New free spins have just been added !",
                 "nom_du_jeu": "coin_master",
                 "created_at": firestore.SERVER_TIMESTAMP
             })
-            print("[Firebase] Historique Coin Master écrit.")
+            print("[Firebase] Enregistrement d'historique créé.")
 
-            # Propulsion du signal direct vers le Topic Coin Master
+            # 2. PROPULSION DIRECTE DU SIGNAL VERS LES SMARTPHONES ABONNÉS
             message = messaging.Message(
                 notification=messaging.Notification(
                     title="🐷 Coin Reward ! 🎁",
                     body="New free spins have just been added !"
                 ),
-                topic="coin_master"  # Fréquence écoutée par vos futurs utilisateurs Coin Master
+                topic="coin_master"  # Envoie directement sur le canal écouté par votre action 6
             )
             
             response = messaging.send(message)
-            print(f"[Firebase Push] Notification Coin Master envoyée avec succès ! (ID: {response})")
+            print(f"[Firebase Push] Notification propulsée en direct avec succès ! (ID: {response})")
             
         except Exception as e:
-            print(f"[Firebase] [Erreur] Échec de l'envoi push : {e}")
+            print(f"[Firebase] [Erreur] Impossible d'écrire ou d'envoyer l'alerte push direct : {e}")
             
 else:
     print(f"[Erreur] Échec de la communication réseau avec Mosttechs (Code {status_code}).")
