@@ -3,7 +3,7 @@ name: Script Scraping Coin Master
 on:
   schedule:
     # Exécution à la minute 00 toutes les 4 heures (00:00, 04:00, 08:00, etc.)
-    - cron: '0 0,4,8,12,16,20 * * *'
+    - cron: '7 0,4,8,12,16,20 * * *'
   workflow_dispatch:
 
 jobs:
