@@ -1,8 +1,8 @@
-name: Script Scraping Coin Master
+name: Script de Scraping Périodique
 
 on:
   schedule:
-    # Exécution à la minute 00 toutes les 4 heures (00:00, 04:00, 08:00, etc.)
+    # Exécution toutes les 4 heures (00h, 04h, 08h, 12h, 16h, 20h UTC)
     - cron: '7 0,4,8,12,16,20 * * *'
   workflow_dispatch:
 
@@ -24,8 +24,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install beautifulsoup4 cloudscraper firebase-admin
 
-    - name: Lancer le scraper Coin Master
+    - name: Lancer le scraper
       env:
+        # Injection sécurisée de votre clé Firebase dans la machine GitHub
         FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
       run: python scraper.py
 
@@ -34,5 +35,5 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add scrapcoinmaster.json
-        git commit -m "Mise à jour automatique Coin Master : $(date +'%Y-%m-%d')" || exit 0
+        git commit -m "Mise à jour automatique des données : $(date +'%Y-%m-%d')" || exit 0
         git push
