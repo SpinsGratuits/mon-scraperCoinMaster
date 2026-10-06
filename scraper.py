@@ -5,16 +5,25 @@ from datetime import datetime, timedelta
 import cloudscraper
 from bs4 import BeautifulSoup
 import firebase_admin
-from firebase_admin import credentials, firestore, messaging  # <-- AJOUT DE MESSAGING ICI
+from firebase_admin import credentials, firestore
 
 # --- 1. CONFIGURATION ---
 url = "https://mosttechs.com/coin-master-60-free-spin/"
 filename = "scrapcoinmaster.json"
 
 mois_en_to_num = {
-    "january": "01", "januray": "01", "february": "02", "february ": "02", "march": "03", 
-    "april": "04", "may": "05", "june": "06", "july": "07", "august": "08", 
-    "september": "09", "october": "10", "november": "11", "december": "12"
+    "january": "01", "jan": "01", "januray": "01",
+    "february": "02", "feb": "02", "february ": "02",
+    "march": "03", "mar": "03",
+    "april": "04", "apr": "04",
+    "may": "05",
+    "june": "06", "jun": "06",
+    "july": "07", "jul": "07",
+    "august": "08", "aug": "08",
+    "september": "09", "sep": "09",
+    "october": "10", "oct": "10",
+    "november": "11", "nov": "11",
+    "december": "12", "dec": "12"
 }
 
 now = datetime.now()
@@ -27,9 +36,11 @@ firebase_key_raw = os.environ.get('FIREBASE_KEY')
 if not firebase_key_raw:
     raise ValueError("Le secret FIREBASE_KEY est introuvable dans l'environnement.")
 
-cred_json = json.loads(firebase_key_raw)
-cred = credentials.Certificate(cred_json)
-firebase_admin.initialize_app(cred)
+if not firebase_admin._apps:
+    cred_json = json.loads(firebase_key_raw)
+    cred = credentials.Certificate(cred_json)
+    firebase_admin.initialize_app(cred)
+
 db = firestore.client()
 
 # --- 2. CHARGEMENT & NETTOYAGE DE L'HISTORIQUE ---
@@ -50,7 +61,6 @@ if os.path.exists(filename):
     except Exception as e:
         print(f"[Attention] Impossible de lire l'historique JSON : {e}")
 
-# Client de contournement des protections Cloudflare
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
 
 try:
@@ -65,20 +75,19 @@ except Exception as e:
 if status_code == 200:
     soup = BeautifulSoup(html_text, "html.parser")
     json_data = []
-    liens_visites_session = set()
-    nouveaux_liens_detectes = 0  # <-- COMPTEUR POUR DECLENCHER LA NOTIFICATION
+    liens_visites_session = set() 
+    nouveaux_liens_detectes = 0  
     
     entry_content = soup.find(class_="entry-content")
     if not entry_content:
         entry_content = soup
         
-    # --- 3. PARCOURS CHRONOLOGIQUE DES BLOCS DE TEXTE ---
-    current_date_str = now.strftime("%d/%m/%Y")
+    current_date_str = now.strftime("%d/%m/%Y")  
     
     for element in entry_content.find_all(["p", "ul", "ol", "strong"]):
         text = element.get_text().strip().lower()
         
-        match_date = re.search(r'(\d{1,2})\s+([a-z]+)\s+(\d{4})', text)
+        match_date = re.search(r'(\d{1,2})\s+([a-z]{3,})\s+(\d{4})', text)
         if match_date:
             jour = match_date.group(1).zfill(2)
             nom_mois = match_date.group(2)
@@ -97,13 +106,13 @@ if status_code == 200:
             if any(p in href.lower() for p in ["twitter.com", "facebook.com", "whatsapp", "pinterest", "reddit.com"]):
                 continue
                 
-            keywords = ["coinmaster", "static-mat", "t.co", "bit.ly"]
+            keywords = ["coinmaster", "moonactive", "t.co", "bit.ly"]
             if any(key in href.lower() for key in keywords):
                 
                 try:
                     date_objet = datetime.strptime(current_date_str, "%d/%m/%Y")
                     if date_objet < limite_conservation:
-                        continue
+                        continue  
                 except:
                     pass
                 
@@ -111,18 +120,14 @@ if status_code == 200:
                     continue
                 liens_visites_session.add(href)
                 
-                type_recompense = "Spins et Coins"
+                type_recompense = "Spins gratuits"
                 
-                # =====================================================================
-                # MODIFICATION ICI : GESTION DU BADGE NEW PENDANT 6 HEURES
-                # =====================================================================
                 if href in anciens_liens:
                     date_premier_scraping_str = anciens_liens[href].get("date_scraping", date_now_str)
                     badge_actuel = ""
                     
                     try:
                         date_premier_scraping = datetime.strptime(date_premier_scraping_str, "%d/%m/%Y @ %H:%M")
-                        # Si le lien a moins de 6 heures, on garde le badge "NEW"
                         if now - date_premier_scraping < timedelta(hours=6):
                             badge_actuel = "NEW"
                     except:
@@ -138,7 +143,7 @@ if status_code == 200:
                         "badge": badge_actuel
                     })
                 else:
-                    nouveaux_liens_detectes += 1  # <-- ON A TROUVÉ UN NOUVEAU LIEN !
+                    nouveaux_liens_detectes += 1
                     date_scraping1_combinee = f"{current_date_str} @ {heure_actuelle_str}"
                     json_data.append({
                         "date_scraping": date_now_str, 
@@ -149,12 +154,10 @@ if status_code == 200:
                         "lienurl": href,
                         "badge": "NEW" 
                     })
-                # =====================================================================
 
     if not json_data and anciens_liens:
         json_data = list(anciens_liens.values())
 
-    # --- 4. TRI CHRONOLOGIQUE ---
     def extraire_cle_parution(item):
         try:
             return datetime.strptime(item.get("date", ""), "%d/%m/%Y").timestamp()
@@ -163,48 +166,39 @@ if status_code == 200:
 
     json_data.sort(key=extraire_cle_parution, reverse=True)
 
-    # --- 5. ENREGISTREMENT LOCAL ---
     with open(filename, mode="w", encoding="utf-8") as json_file:
         json.dump(json_data, json_file, indent=4, ensure_ascii=False)
         
     print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
 
-    # --- 6. EXPORTATION VERS FIREBASE FIRESTORE ---
-    try:
-        db.collection("coin_master").document("current_links").set({
-            "links": json_data,
-            "updated_at": firestore.SERVER_TIMESTAMP
-        })
-        print("[Firebase] Données synchronisées avec succès sur Firestore.")
-    except Exception as e:
-        print(f"[Firebase] [Erreur] Synchronisation impossible : {e}")
-
-    # --- 7. ENVOI DE LA NOTIFICATION PUSH SI NOUVEAU LIEN DISPONIBLE ---
+    # --- 7. EXPORTATION NOTIFICATION & ENVOI PUSH DIRECT ---
     if nouveaux_liens_detectes > 0:
         try:
-            # Construction du message pour l'application FlutterFlow
-            message_push = messaging.Message(
+            from firebase_admin import messaging
+            
+            # Écriture de l'historique dans la collection globale
+            db.collection("notifications").add({
+                "title": "🐷 Coin Reward ! 🎁",
+                "body": "New free spins have just been added !",
+                "nom_du_jeu": "coin_master",
+                "created_at": firestore.SERVER_TIMESTAMP
+            })
+            print("[Firebase] Historique Coin Master écrit.")
+
+            # Propulsion du signal direct vers le Topic Coin Master
+            message = messaging.Message(
                 notification=messaging.Notification(
-                    title="Coin M. Nouveaux Spins ! 🎁",
-                    body=f"De nouveaux liens viennent d'être ajoutés. Profitez de vos tours gratuits !"
+                    title="🐷 Coin Reward ! 🎁",
+                    body="New free spins have just been added !"
                 ),
-                android=messaging.AndroidConfig(
-                    priority='high',  # Force l'affichage sur écran en veille
-                    notification=messaging.AndroidNotification(
-                        sound='default',
-                        click_action='FLUTTER_NOTIFICATION_CLICK'  # Ouvre l'app au clic
-                    ),
-                ),
-                topic='alertes_github'  # Doit correspondre au nom défini dans la Custom Action FlutterFlow
+                topic="coin_master"  # Fréquence écoutée par vos futurs utilisateurs Coin Master
             )
             
-            # Envoi au topic
-            response = messaging.send(message_push)
-            print(f"[Push FCM] Notification envoyée avec succès ({nouveaux_liens_detectes} nouveau(x) lien(s)). ID: {response}")
+            response = messaging.send(message)
+            print(f"[Firebase Push] Notification Coin Master envoyée avec succès ! (ID: {response})")
+            
         except Exception as e:
-            print(f"[Push FCM] [Erreur] Échec de l'envoi de la notification : {e}")
-    else:
-        print("[Push FCM] Aucun nouveau lien détecté. Pas de notification envoyée.")
+            print(f"[Firebase] [Erreur] Échec de l'envoi push : {e}")
             
 else:
-    print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
+    print(f"[Erreur] Échec de la communication réseau avec Mosttechs (Code {status_code}).")
