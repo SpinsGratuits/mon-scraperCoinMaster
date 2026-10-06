@@ -27,7 +27,7 @@ jobs:
     - name: Lancer le scraper Coin Master
       env:
         FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-      run: python scrap_coinmaster.py
+      run: python scraper.py
 
     - name: Sauvegarder les modifications dans le dépôt
       run: |
