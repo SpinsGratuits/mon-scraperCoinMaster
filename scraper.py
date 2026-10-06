@@ -109,7 +109,7 @@ if status_code == 200:
             if any(p in href.lower() for p in ["twitter.com", "facebook.com", "whatsapp", "pinterest", "reddit.com"]):
                 continue
                 
-            keywords = ["dicedreams", "superplay", "t.co", "bit.ly"]
+           keywords = ["coinmaster", "moonactive", "t.co", "bit.ly"]
             if any(key in href.lower() for key in keywords):
                 
                 try:
@@ -123,7 +123,7 @@ if status_code == 200:
                     continue
                 liens_visites_session.add(href)
                 
-                type_recompense = "Rolls gratuits"
+                type_recompense = "Spins gratuits"
                 
                 # --- STRATÉGIE CONSERVATION DU BADGE NEW (6 HEURES) ---
                 if href in anciens_liens:
