@@ -12,18 +12,9 @@ url = "https://mosttechs.com/coin-master-60-free-spin/"
 filename = "scrapcoinmaster.json"
 
 mois_en_to_num = {
-    "january": "01", "jan": "01", "januray": "01",
-    "february": "02", "feb": "02", "february ": "02",
-    "march": "03", "mar": "03",
-    "april": "04", "apr": "04",
-    "may": "05",
-    "june": "06", "jun": "06",
-    "july": "07", "jul": "07",
-    "august": "08", "aug": "08",
-    "september": "09", "sep": "09",
-    "october": "10", "oct": "10",
-    "november": "11", "nov": "11",
-    "december": "12", "dec": "12"
+    "january": "01", "januray": "01", "february": "02", "february ": "02", "march": "03", 
+    "april": "04", "may": "05", "june": "06", "july": "07", "august": "08", 
+    "september": "09", "october": "10", "november": "11", "december": "12"
 }
 
 now = datetime.now()
@@ -36,12 +27,9 @@ firebase_key_raw = os.environ.get('FIREBASE_KEY')
 if not firebase_key_raw:
     raise ValueError("Le secret FIREBASE_KEY est introuvable dans l'environnement.")
 
-# Vérification pour éviter les conflits d'initialisation en multi-script
-if not firebase_admin._apps:
-    cred_json = json.loads(firebase_key_raw)
-    cred = credentials.Certificate(cred_json)
-    firebase_admin.initialize_app(cred)
-
+cred_json = json.loads(firebase_key_raw)
+cred = credentials.Certificate(cred_json)
+firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # --- 2. CHARGEMENT & NETTOYAGE DE L'HISTORIQUE ---
@@ -62,7 +50,7 @@ if os.path.exists(filename):
     except Exception as e:
         print(f"[Attention] Impossible de lire l'historique JSON : {e}")
 
-# Client anti-bot pour contourner Cloudflare de Mosttechs
+# Client de contournement des protections Cloudflare
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
 
 try:
@@ -77,20 +65,19 @@ except Exception as e:
 if status_code == 200:
     soup = BeautifulSoup(html_text, "html.parser")
     json_data = []
-    liens_visites_session = set() 
-    nouveaux_liens_detectes = 0  # Compteur dédié au déclenchement des pushs
+    liens_visites_session = set()
     
     entry_content = soup.find(class_="entry-content")
     if not entry_content:
         entry_content = soup
         
-    # --- 3. PARCOURS DE LA STRUCTURE TEXTUELLE ---
-    current_date_str = now.strftime("%d/%m/%Y")  
+    # --- 3. PARCOURS CHRONOLOGIQUE DES BLOCS DE TEXTE ---
+    current_date_str = now.strftime("%d/%m/%Y")
     
     for element in entry_content.find_all(["p", "ul", "ol", "strong"]):
         text = element.get_text().strip().lower()
         
-        match_date = re.search(r'(\d{1,2})\s+([a-z]{3,})\s+(\d{4})', text)
+        match_date = re.search(r'(\d{1,2})\s+([a-z]+)\s+(\d{4})', text)
         if match_date:
             jour = match_date.group(1).zfill(2)
             nom_mois = match_date.group(2)
@@ -109,13 +96,13 @@ if status_code == 200:
             if any(p in href.lower() for p in ["twitter.com", "facebook.com", "whatsapp", "pinterest", "reddit.com"]):
                 continue
                 
-           keywords = ["coinmaster", "moonactive", "t.co", "bit.ly"]
+            keywords = ["coinmaster", "static-mat", "t.co", "bit.ly"]
             if any(key in href.lower() for key in keywords):
                 
                 try:
                     date_objet = datetime.strptime(current_date_str, "%d/%m/%Y")
                     if date_objet < limite_conservation:
-                        continue  
+                        continue
                 except:
                     pass
                 
@@ -123,15 +110,18 @@ if status_code == 200:
                     continue
                 liens_visites_session.add(href)
                 
-                type_recompense = "Spins gratuits"
+                type_recompense = "Spins et Coins"
                 
-                # --- STRATÉGIE CONSERVATION DU BADGE NEW (6 HEURES) ---
+                # =====================================================================
+                # MODIFICATION ICI : GESTION DU BADGE NEW PENDANT 6 HEURES
+                # =====================================================================
                 if href in anciens_liens:
                     date_premier_scraping_str = anciens_liens[href].get("date_scraping", date_now_str)
                     badge_actuel = ""
                     
                     try:
                         date_premier_scraping = datetime.strptime(date_premier_scraping_str, "%d/%m/%Y @ %H:%M")
+                        # Si le lien a moins de 6 heures, on garde le badge "NEW"
                         if now - date_premier_scraping < timedelta(hours=6):
                             badge_actuel = "NEW"
                     except:
@@ -147,8 +137,6 @@ if status_code == 200:
                         "badge": badge_actuel
                     })
                 else:
-                    # Nouveau lien trouvé
-                    nouveaux_liens_detectes += 1
                     date_scraping1_combinee = f"{current_date_str} @ {heure_actuelle_str}"
                     json_data.append({
                         "date_scraping": date_now_str, 
@@ -159,6 +147,7 @@ if status_code == 200:
                         "lienurl": href,
                         "badge": "NEW" 
                     })
+                # =====================================================================
 
     if not json_data and anciens_liens:
         json_data = list(anciens_liens.values())
@@ -176,36 +165,19 @@ if status_code == 200:
     with open(filename, mode="w", encoding="utf-8") as json_file:
         json.dump(json_data, json_file, indent=4, ensure_ascii=False)
         
-    print(f"[Terminé] Fichier Dice Dreams {filename} mis à jour ({len(json_data)} liens valides).")
+    print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
 
-    # --- 6. EXPORTATION ET ENVOI DIRECT DU PUSH ---
-    if nouveaux_liens_detectes > 0:
-        try:
-            from firebase_admin import messaging  # Import indispensable pour l'antenne radio
-            
-            # 1. Écriture optionnelle d'historique dans Firestore
-            db.collection("notifications").add({
-                "title": "🐷 Coin Reward ! 🎁",
-                "body": "New free spins have just been added !",
-                "nom_du_jeu": "coin_master",
-                "created_at": firestore.SERVER_TIMESTAMP
-            })
-            print("[Firebase] Enregistrement d'historique créé.")
-
-            # 2. PROPULSION DIRECTE DU SIGNAL VERS LES SMARTPHONES ABONNÉS
-            message = messaging.Message(
-                notification=messaging.Notification(
-                    title="🐷 Coin Reward ! 🎁",
-                    body="New free spins have just been added !"
-                ),
-                topic="coin_master"  # Envoie directement sur le canal écouté par votre action 6
-            )
-            
-            response = messaging.send(message)
-            print(f"[Firebase Push] Notification propulsée en direct avec succès ! (ID: {response})")
-            
-        except Exception as e:
-            print(f"[Firebase] [Erreur] Impossible d'écrire ou d'envoyer l'alerte push direct : {e}")
+    # --- 6. EXPORTATION VERS FIREBASE FIRESTORE ---
+    try:
+        # Utilisation d'un document fixe "current_links" dans la collection "coin_master" 
+        # pour stocker la liste complète, ce qui est parfait pour l'affichage FlutterFlow.
+        db.collection("coin_master").document("current_links").set({
+            "links": json_data,
+            "updated_at": firestore.SERVER_TIMESTAMP
+        })
+        print("[Firebase] Données synchronisées avec succès sur Firestore.")
+    except Exception as e:
+        print(f"[Firebase] [Erreur] Synchronisation impossible : {e}")
             
 else:
-    print(f"[Erreur] Échec de la communication réseau avec Mosttechs (Code {status_code}).")
+    print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
