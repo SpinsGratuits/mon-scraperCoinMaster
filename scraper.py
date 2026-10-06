@@ -167,17 +167,6 @@ if status_code == 200:
         
     print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
 
-    # --- 6. EXPORTATION VERS FIREBASE FIRESTORE ---
-    try:
-        # Utilisation d'un document fixe "current_links" dans la collection "coin_master" 
-        # pour stocker la liste complète, ce qui est parfait pour l'affichage FlutterFlow.
-        db.collection("coin_master").document("current_links").set({
-            "links": json_data,
-            "updated_at": firestore.SERVER_TIMESTAMP
-        })
-        print("[Firebase] Données synchronisées avec succès sur Firestore.")
-    except Exception as e:
-        print(f"[Firebase] [Erreur] Synchronisation impossible : {e}")
             
 else:
     print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
