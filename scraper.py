@@ -27,9 +27,12 @@ firebase_key_raw = os.environ.get('FIREBASE_KEY')
 if not firebase_key_raw:
     raise ValueError("Le secret FIREBASE_KEY est introuvable dans l'environnement.")
 
-cred_json = json.loads(firebase_key_raw)
-cred = credentials.Certificate(cred_json)
-firebase_admin.initialize_app(cred)
+# Sécurité indispensable pour éviter les plantages lors d'exécutions simultanées
+if not firebase_admin._apps:
+    cred_json = json.loads(firebase_key_raw)
+    cred = credentials.Certificate(cred_json)
+    firebase_admin.initialize_app(cred)
+
 db = firestore.client()
 
 # --- 2. CHARGEMENT & NETTOYAGE DE L'HISTORIQUE ---
@@ -66,6 +69,7 @@ if status_code == 200:
     soup = BeautifulSoup(html_text, "html.parser")
     json_data = []
     liens_visites_session = set()
+    nouveaux_liens_detectes = 0  # Compteur dédié au déclenchement des pushs
     
     entry_content = soup.find(class_="entry-content")
     if not entry_content:
@@ -112,16 +116,13 @@ if status_code == 200:
                 
                 type_recompense = "Spins et Coins"
                 
-                # =====================================================================
-                # MODIFICATION ICI : GESTION DU BADGE NEW PENDANT 6 HEURES
-                # =====================================================================
+                # --- STRATÉGIE DE RECONSTITUTION ET CONSERVATION DU BADGE NEW (6 HEURES) ---
                 if href in anciens_liens:
                     date_premier_scraping_str = anciens_liens[href].get("date_scraping", date_now_str)
                     badge_actuel = ""
                     
                     try:
                         date_premier_scraping = datetime.strptime(date_premier_scraping_str, "%d/%m/%Y @ %H:%M")
-                        # Si le lien a moins de 6 heures, on garde le badge "NEW"
                         if now - date_premier_scraping < timedelta(hours=6):
                             badge_actuel = "NEW"
                     except:
@@ -137,6 +138,8 @@ if status_code == 200:
                         "badge": badge_actuel
                     })
                 else:
+                    # Nouveau lien détecté
+                    nouveaux_liens_detectes += 1
                     date_scraping1_combinee = f"{current_date_str} @ {heure_actuelle_str}"
                     json_data.append({
                         "date_scraping": date_now_str, 
@@ -147,7 +150,6 @@ if status_code == 200:
                         "lienurl": href,
                         "badge": "NEW" 
                     })
-                # =====================================================================
 
     if not json_data and anciens_liens:
         json_data = list(anciens_liens.values())
@@ -167,6 +169,34 @@ if status_code == 200:
         
     print(f"[Terminé] Fichier Coin Master {filename} mis à jour ({len(json_data)} liens valides).")
 
+    # --- 7. EXPORTATION NOTIFICATION & ENVOI PUSH DIRECT ---
+    if nouveaux_liens_detectes > 0:
+        try:
+            from firebase_admin import messaging  # Transmission réseau instantanée FCM
+            
+            # 1. Écriture de l'historique anonyme dans la collection Firestore commune
+            db.collection("notifications").add({
+                "title": "🐷 Coin Reward ! 🎁",
+                "body": "New free spins have just been added !",
+                "nom_du_jeu": "coin_master",
+                "created_at": firestore.SERVER_TIMESTAMP
+            })
+            print("[Firebase] Enregistrement d'historique créé pour Coin Master.")
+
+            # 2. Propulsion du signal direct vers le canal de diffusion
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title="🐷 Coin Reward ! 🎁",
+                    body="New free spins have just been added !"
+                ),
+                topic="coin_master"  # Fréquence écoutée par les téléphones abonnés à Coin Master
+            )
+            
+            response = messaging.send(message)
+            print(f"[Firebase Push] Notification Coin Master propulsée en direct avec succès ! (ID: {response})")
+            
+        except Exception as e:
+            print(f"[Firebase] [Erreur] Impossible d'envoyer l'alerte push direct Coin Master : {e}")
             
 else:
     print(f"[Erreur] Échec d'accès réseau (Code {status_code}).")
