@@ -1,5 +1,14 @@
 [
     {
+        "date_scraping": "16/10/2026 @ 11:35",
+        "date_scraping1": "16/10/2026 @ 11:35",
+        "date": "16/10/2026",
+        "heure": "11:35",
+        "recompense": "Spins et Coins",
+        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_EMAILljXXnu_20261015",
+        "badge": "NEW"
+    },
+    {
         "date_scraping": "16/10/2026 @ 07:40",
         "date_scraping1": "16/10/2026 @ 07:40",
         "date": "16/10/2026",
@@ -60,7 +69,7 @@
         "heure": "05:33",
         "recompense": "Spins et Coins",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_HELPLDtmyA_20261016",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "15/10/2026 @ 07:43",
