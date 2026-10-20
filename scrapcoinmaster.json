@@ -6,7 +6,7 @@
         "heure": "18:41",
         "recompense": "Spins et Coins",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_EMAILwBSaia_20261018",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "19/10/2026 @ 18:41",
@@ -15,7 +15,7 @@
         "heure": "18:41",
         "recompense": "Spins et Coins",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_RICHBkezXH_20261010",
-        "badge": "NEW"
+        "badge": ""
     },
     {
         "date_scraping": "19/10/2026 @ 06:47",
@@ -294,69 +294,6 @@
         "heure": "05:33",
         "recompense": "Spins et Coins",
         "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_HELPLDtmyA_20261016",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 07:43",
-        "date_scraping1": "15/10/2026 @ 07:43",
-        "date": "15/10/2026",
-        "heure": "07:43",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_FCBOMWNTq_20261015",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 07:43",
-        "date_scraping1": "15/10/2026 @ 07:43",
-        "date": "15/10/2026",
-        "heure": "07:43",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_FCBrlbHeW_20261015",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 07:43",
-        "date_scraping1": "15/10/2026 @ 07:43",
-        "date": "15/10/2026",
-        "heure": "07:43",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_INSzDdfvX_20261015",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 07:43",
-        "date_scraping1": "15/10/2026 @ 07:43",
-        "date": "15/10/2026",
-        "heure": "07:43",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_CHATBiMvWNY_20261015",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 07:43",
-        "date_scraping1": "15/10/2026 @ 07:43",
-        "date": "15/10/2026",
-        "heure": "07:43",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_TRGxvXQMs_20261015",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 06:43",
-        "date_scraping1": "15/10/2026 @ 06:43",
-        "date": "15/10/2026",
-        "heure": "06:43",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_WATSVVPMin_20261015",
-        "badge": ""
-    },
-    {
-        "date_scraping": "15/10/2026 @ 04:33",
-        "date_scraping1": "15/10/2026 @ 04:33",
-        "date": "15/10/2026",
-        "heure": "04:33",
-        "recompense": "Spins et Coins",
-        "lienurl": "https://rewards.coinmaster.com/rewards/rewards.html?c=pe_HELPnGtYKu_20261015",
         "badge": ""
     }
 ]
